@@ -1,0 +1,6 @@
+mlflow>=2.15
+pandas>=2.2
+prefect>=3.0
+psycopg2-binary>=2.9
+sqlalchemy>=2.0
+sqlalchemy_utils>=0.41

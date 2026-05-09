@@ -1,0 +1,52 @@
+{
+    "name": "MLOps - Renewable Energy Forecasting",
+    "dockerComposeFile": "./docker-compose.yml",
+    "service": "app",
+    "workspaceFolder": "/workspace",
+    "remoteUser": "vscode",
+    "forwardPorts": [
+        5000,
+        4200,
+        3000,
+        8000
+    ],
+    "portsAttributes": {
+        "5000": {
+            "label": "MLflow",
+            "onAutoForward": "notify"
+        },
+        "4200": {
+            "label": "Prefect",
+            "onAutoForward": "notify"
+        },
+        "3000": {
+            "label": "Grafana",
+            "onAutoForward": "notify"
+        },
+        "8000": {
+            "label": "Web API",
+            "onAutoForward": "notify"
+        }
+    },
+    "features": {
+        "ghcr.io/devcontainers-extra/features/uv:1": {}
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "charliermarsh.ruff",
+                "ms-python.mypy-type-checker"
+            ]
+        }
+    },
+    "remoteEnv": {
+        "PROJECT_NAME": "MLOps - Renewable Energy Forecasting",
+        "PYTHON_VERSION": "3.12",
+        "UV_INIT_BARE": "true"
+    },
+    "initializeCommand": "bash .devcontainer/init-env.sh",
+    "postCreateCommand": "make post-create",
+    "mounts": []
+}
