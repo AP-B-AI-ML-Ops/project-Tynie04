@@ -5,18 +5,20 @@ from prefect import task
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import root_mean_squared_error
 
-from src.preprocess import FEATURES, TARGET
+from src.preprocess import FEATURES_DAILY, FEATURES_HOURLY, TARGET
 
 
 @task
-def run_optimization(train, val, num_trials=20):
+def run_optimization(train, val, granularity="daily", num_trials=20):
+    features = FEATURES_DAILY if granularity == "daily" else FEATURES_HOURLY
+
     mlflow.set_tracking_uri("http://experiment-tracking:5000")
-    mlflow.set_experiment("solar-forecast-hpo")
+    mlflow.set_experiment(f"solar-forecast-hpo-{granularity}")
     mlflow.sklearn.autolog(disable=True)
 
-    X_train = train[FEATURES]
+    X_train = train[features]
     y_train = train[TARGET]
-    X_val = val[FEATURES]
+    X_val = val[features]
     y_val = val[TARGET]
 
     def objective(trial):
@@ -30,6 +32,7 @@ def run_optimization(train, val, num_trials=20):
         }
 
         with mlflow.start_run():
+            mlflow.set_tag("granularity", granularity)
             mlflow.log_params(params)
             model = RandomForestRegressor(**params)
             model.fit(X_train, y_train)
@@ -42,5 +45,5 @@ def run_optimization(train, val, num_trials=20):
     study = optuna.create_study(direction="minimize")
     study.optimize(objective, n_trials=num_trials)
 
-    print(f"Best RMSE: {study.best_value:.2f}")
-    print(f"Best params: {study.best_params}")
+    print(f"[{granularity}] Best RMSE: {study.best_value:.2f}")
+    print(f"[{granularity}] Best params: {study.best_params}")

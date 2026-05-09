@@ -54,6 +54,7 @@ services:
         condition: service_started
     volumes:
       - batch-data:/batch-data
+      - mlflow-artifacts:/mlflow-artifacts
     environment:
       - MLFLOW_TRACKING_URI=http://experiment-tracking:5000
 
@@ -68,6 +69,7 @@ services:
         condition: service_started
     volumes:
       - batch-data:/batch-data
+      - mlflow-artifacts:/mlflow-artifacts
     environment:
       - MLFLOW_TRACKING_URI=http://experiment-tracking:5000
       - PREFECT_API_URL=http://orchestration:4200/api

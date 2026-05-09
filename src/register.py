@@ -6,22 +6,23 @@ from prefect import task
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import root_mean_squared_error
 
-from src.preprocess import FEATURES, TARGET
-
-MODEL_NAME = "solar-forecast-model"
+from src.preprocess import FEATURES_DAILY, FEATURES_HOURLY, TARGET
 
 
 @task
-def run_register(train, val, top_n=3):
+def run_register(train, val, granularity="daily", top_n=3):
+    features = FEATURES_DAILY if granularity == "daily" else FEATURES_HOURLY
+    model_name = f"solar-forecast-model-{granularity}"
+
     mlflow.set_tracking_uri("http://experiment-tracking:5000")
     client = MlflowClient()
 
-    X_train = train[FEATURES]
+    X_train = train[features]
     y_train = train[TARGET]
-    X_val = val[FEATURES]
+    X_val = val[features]
     y_val = val[TARGET]
 
-    experiment = client.get_experiment_by_name("solar-forecast-hpo")
+    experiment = client.get_experiment_by_name(f"solar-forecast-hpo-{granularity}")
     top_runs = client.search_runs(
         experiment_ids=experiment.experiment_id,
         run_view_type=ViewType.ACTIVE_ONLY,
@@ -29,12 +30,16 @@ def run_register(train, val, top_n=3):
         order_by=["metrics.rmse ASC"],
     )
 
-    mlflow.set_experiment("solar-forecast-best-models")
+    mlflow.set_experiment(f"solar-forecast-best-models-{granularity}")
     mlflow.sklearn.autolog(disable=True)
+
+    best_rmse = float("inf")
+    best_model = None
+    best_params = None
 
     for run in top_runs:
         params = {
-            k: int(v) if k != "random_state" and k != "n_jobs" else int(v)
+            k: int(v)
             for k, v in run.data.params.items()
             if k
             in [
@@ -47,27 +52,22 @@ def run_register(train, val, top_n=3):
         }
         params["n_jobs"] = -1
 
-        with mlflow.start_run():
-            model = RandomForestRegressor(**params)
-            model.fit(X_train, y_train)
-            y_pred = model.predict(X_val)
-            rmse = root_mean_squared_error(y_val, y_pred)
-            mlflow.log_params(params)
-            mlflow.log_metric("rmse", rmse)
-            mlflow.sklearn.log_model(model, artifact_path="model")
+        model = RandomForestRegressor(**params)
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_val)
+        rmse = root_mean_squared_error(y_val, y_pred)
 
-    best_run = client.search_runs(
-        experiment_ids=client.get_experiment_by_name(
-            "solar-forecast-best-models"
-        ).experiment_id,
-        run_view_type=ViewType.ACTIVE_ONLY,
-        max_results=1,
-        order_by=["metrics.rmse ASC"],
-    )[0]
+        if rmse < best_rmse:
+            best_rmse = rmse
+            best_model = model
+            best_params = params
 
-    model_uri = f"runs:/{best_run.info.run_id}/model"
-    mlflow.register_model(model_uri, name=MODEL_NAME)
+    with mlflow.start_run():
+        mlflow.set_tag("granularity", granularity)
+        mlflow.log_params(best_params)
+        mlflow.log_metric("rmse", best_rmse)
+        mlflow.sklearn.log_model(
+            best_model, artifact_path="model", registered_model_name=model_name
+        )
 
-    print(
-        f"Registered model '{MODEL_NAME}' from run {best_run.info.run_id} (RMSE: {best_run.data.metrics['rmse']:.2f})"
-    )
+    print(f"Registered '{model_name}' (RMSE: {best_rmse:.2f})")
