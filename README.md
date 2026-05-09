@@ -1,12 +1,12 @@
 # Renewable Energy Forecasting
 
-An end-to-end MLOps system that predicts daily solar energy production (in kWh) for the Antwerp region using weather forecast data.
+An end-to-end MLOps system that predicts solar energy production (in kWh) for Flanders using weather forecast data, at daily or hourly granularity.
 
 ## Problem Description
 
 Grid operators and energy traders need reliable short-term forecasts of renewable energy production to make balancing decisions. Solar output is weather-dependent and hard to predict without a model.
 
-This system predicts the total daily solar energy production (kWh) for Flanders based on incoming solar radiation forecasts. The input is the forecasted daily solar radiation (W/m²) from the Open Meteo ECMWF model, combined with time features (month, day of year). The output is the predicted solar production in kWh for that day.
+This system trains two models (daily and hourly granularity) using solar radiation forecasts from Open Meteo (ECMWF) combined with cyclical time features. The output is the predicted total solar production in kWh for Flanders for the requested datetime.
 
 Because Open Meteo provides radiation forecasts up to 16 days ahead, the deployed API can make real predictions using live forecast data, not just backtests.
 
@@ -16,7 +16,7 @@ The system consists of the following containerized services:
 
 | Service | Description | Port |
 |---|---|---|
-| `database` | PostgreSQL backend for MLflow and monitoring | 5432 |
+| `database` | PostgreSQL backend for MLflow and Prefect | 5432 |
 | `experiment-tracking` | MLflow server for experiment tracking and model registry | 5000 |
 | `orchestration` | Prefect server for workflow scheduling | 4200 |
 | `web-service` | REST API for on-demand solar production forecasts | 8000 |
@@ -28,12 +28,28 @@ The system consists of the following containerized services:
 
 The dataset comes from the Data Engineering course and combines:
 
-- `sun_combined.csv` -- daily solar radiation (W/m²) from Open Meteo ECMWF, KMI, and Kaggle sources
-- `productie_comnbined.csv` -- hourly solar and wind production (kWh) from Energie Vlaanderen and Elia
+- `sun_combined.csv`: daily solar radiation (W/m²) from Open Meteo ECMWF, KMI, and Kaggle sources
+- `productie_comnbined.csv`: hourly solar and wind production (kWh) from Energie Vlaanderen and Elia
 
-The training set is built by joining these on date and aggregating production to daily totals. This results in approximately 379 days of labeled data covering March 2025 to March 2026.
+Two datasets are built from this:
+
+- **Daily**: ~379 rows, one row per day with aggregated production
+- **Hourly**: ~9073 rows, one row per hour with hourly production
 
 Place raw data files in `data/raw/` before running the training pipeline.
+
+## Model
+
+Two `RandomForestRegressor` models are trained and registered in MLflow:
+
+| Model | Features | Approx. RMSE |
+|---|---|---|
+| `solar-forecast-model-daily` | radiation, month, sin/cos day-of-year | ~3M kWh |
+| `solar-forecast-model-hourly` | radiation, month, sin/cos day-of-year, sin/cos hour | ~320K kWh |
+
+Cyclical encoding (sin/cos) is used for day-of-year and hour so the model understands that day 365 and day 1 are adjacent. Hyperparameters are tuned with Optuna (20 trials per model). The best model from HPO is registered in the MLflow model registry under the name `solar-forecast-model-{granularity}`.
+
+The training pipeline runs as a Prefect flow and can be triggered from the Prefect UI at http://localhost:4200.
 
 ## Getting Started
 
@@ -138,7 +154,41 @@ uv run pytest tests/
 
 ### Web Service
 
-`POST /predict` -- accepts a JSON body with radiation and date features, returns predicted solar production in kWh.
+`POST /predict`: accepts a datetime and radiation value, returns predicted solar production in kWh. The service computes all cyclical features internally.
+
+**Request:**
+
+```json
+{
+  "granularity": "daily",
+  "datetime": "2024-06-21",
+  "open_meteo_radiation": 180.5
+}
+```
+
+For hourly predictions, pass `"granularity": "hourly"` and a full datetime string:
+
+```json
+{
+  "granularity": "hourly",
+  "datetime": "2024-06-21T14:00:00",
+  "open_meteo_radiation": 180.5
+}
+```
+
+**Response:**
+
+```json
+{
+  "datetime": "2024-06-21T00:00:00",
+  "granularity": "daily",
+  "predicted_zon_kwh": 23104490.86
+}
+```
+
+`GET /health`: returns `{"status": "ok"}`.
+
+Models are loaded lazily on first request and cached for subsequent calls.
 
 ### Batch Service
 
