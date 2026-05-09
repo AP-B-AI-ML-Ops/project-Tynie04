@@ -48,6 +48,21 @@ services:
     environment:
       - MLFLOW_TRACKING_URI=http://experiment-tracking:5000
 
+  training-service:
+    build:
+      context: .
+      dockerfile: services/training-service/Dockerfile
+    depends_on:
+      orchestration:
+        condition: service_healthy
+      experiment-tracking:
+        condition: service_started
+    volumes:
+      - batch-data:/batch-data
+    environment:
+      - MLFLOW_TRACKING_URI=http://experiment-tracking:5000
+      - PREFECT_API_URL=http://orchestration:4200/api
+
   batch-service:
     build: ./services/batch-service
     depends_on:

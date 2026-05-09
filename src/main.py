@@ -38,4 +38,4 @@ def training_flow(reprocess=False):
 
 
 if __name__ == "__main__":
-    training_flow()
+    training_flow.serve(name="solar-forecast-training")
