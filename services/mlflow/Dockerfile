@@ -10,4 +10,5 @@ CMD ["sh", "-c", "mlflow server \
      --host 0.0.0.0 \
      --port 5000 \
      --backend-store-uri postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/mlflow_db \
+     --default-artifact-root /mlflow-artifacts \
      --allowed-hosts '*'"]

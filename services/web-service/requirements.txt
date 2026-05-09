@@ -1,3 +1,5 @@
 mlflow>=2.15
 flask>=3.0
 prefect>=3.0
+pandas>=2.2
+scikit-learn>=1.5

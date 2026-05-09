@@ -19,6 +19,8 @@ services:
       - "5000:5000"
     env_file:
       - .env
+    volumes:
+      - mlflow-artifacts:/mlflow-artifacts
     depends_on:
       database:
         condition: service_healthy
@@ -27,6 +29,13 @@ services:
     build: ./services/prefect
     ports:
       - "4200:4200"
+    depends_on:
+      database:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - PREFECT_UI_API_URL=http://localhost:4200/api
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4200/api/health')"]
       interval: 5s
@@ -105,4 +114,5 @@ services:
 volumes:
   postgres-data:
   batch-data:
+  mlflow-artifacts:
   grafana-data-dashboards:
