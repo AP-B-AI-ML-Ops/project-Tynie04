@@ -1,3 +1,5 @@
+import shutil
+
 from prefect import flow
 
 from src.hpo import run_optimization
@@ -7,6 +9,7 @@ from src.train import run_train
 
 RAW_SUN = "data/raw/sun_combined.csv"
 RAW_PROD = "data/raw/productie_comnbined.csv"
+BATCH_DATA_PATH = "/batch-data/dataset_hourly.parquet"
 
 
 @flow(name="solar-forecast-training")
@@ -18,6 +21,10 @@ def training_flow():
         df = add_features(df, granularity=granularity)
         save_processed(df, processed_path)
         print(f"[{granularity}] Dataset: {len(df)} rows")
+
+        if granularity == "hourly":
+            shutil.copy(processed_path, BATCH_DATA_PATH)
+            print(f"Copied hourly dataset to {BATCH_DATA_PATH}")
 
         train, val = split(df)
         print(f"[{granularity}] Train: {len(train)}, Val: {len(val)}")

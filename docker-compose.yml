@@ -83,6 +83,7 @@ services:
         condition: service_started
     volumes:
       - batch-data:/batch-data
+      - mlflow-artifacts:/mlflow-artifacts
     env_file:
       - .env
     environment:
