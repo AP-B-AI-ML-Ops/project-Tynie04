@@ -1,0 +1,16 @@
+apiVersion: 1
+
+datasources:
+  - name: grafana-postgresql-datasource
+    type: postgres
+    url: database:5432
+    user: postgres
+    secureJsonData:
+      password: postgres
+    jsonData:
+      database: monitoring_db
+      sslmode: disable
+      postgresVersion: 1500
+      minInterval: 1m
+    isDefault: true
+    editable: true
