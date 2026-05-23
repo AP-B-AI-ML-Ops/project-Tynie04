@@ -1,4 +1,3 @@
-# https://pre-commit.com
 default_install_hook_types: [pre-commit]
 default_stages: [pre-commit, manual]
 fail_fast: true
