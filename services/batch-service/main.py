@@ -63,7 +63,7 @@ def fetch_radiation_forecast():
     yesterday = (datetime.now(UTC) - timedelta(days=1)).strftime("%Y-%m-%d")
 
     resp = requests.get(
-        "https://archive-api.open-meteo.com/v1/archive",
+        "https://api.open-meteo.com/v1/forecast",
         params={
             "latitude": LAT,
             "longitude": LON,
@@ -177,5 +177,5 @@ def batch_forecast():
 if __name__ == "__main__":
     batch_forecast.serve(
         name="batch-forecast",
-        cron="0 * * * *",
+        cron="0 6 * * *",
     )
