@@ -1,5 +1,14 @@
 services:
 
+  app:
+    build: .devcontainer
+    image: mlops-energy-forecasting-dev
+    volumes:
+      - .:/workspace:cached
+    command: sleep infinity
+    env_file:
+      - .env
+
   database:
     build: ./database
     restart: unless-stopped
