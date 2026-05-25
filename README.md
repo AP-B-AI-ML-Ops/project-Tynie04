@@ -61,7 +61,7 @@ Cyclical encoding (sin/cos) is used for day-of-year and hour so the model unders
 For local development (optional, only needed if you want to run services outside of Docker):
 - [uv](https://docs.astral.sh/uv/getting-started/installation/), used as the Python package manager across all services and local development
 
-> **Dev Container:** If you use VS Code, a dev container is included that sets up the full development environment automatically with Python, uv, and all dependencies pre-installed. Install the Dev Containers extension and click "Reopen in Container" when prompted. The post-create command installs dependencies and pre-commit hooks automatically, so no local setup is needed.
+> **Dev Container:** If you use VS Code, a dev container is included that sets up the full development environment automatically with Python, uv, and all dependencies pre-installed. Install the Dev Containers extension and click "Reopen in Container" when prompted. The dev container uses the same `docker-compose.yml` as the full stack, so all services (MLflow, Prefect, web service, etc.) are started automatically alongside the dev environment. The post-create command installs dependencies and pre-commit hooks automatically, so no additional setup is needed.
 
 ### 1. Clone the repository
 
@@ -77,6 +77,8 @@ cp .env.example .env
 ```
 
 The defaults in `.env.example` work out of the box for local development. The key variables are database credentials, MLflow tracking URI, and the Prefect API URL, all pre-configured for the Docker network.
+
+> **Note:** If you are using the dev container, this step is handled automatically. On startup, `.env` is created from `.env.example` if it does not already exist. If a `.env` file is already present, it is left untouched. This generated `.env` uses the same defaults as `.env.example`, which are compatible with the Docker Compose setup. If you need to customize any environment variables, you can edit the `.env` file after the dev container has started, or you can make an `.env` file locally before starting the dev container since the dev container will not overwrite an existing `.env`.
 
 ### 3. Start the stack
 
@@ -207,11 +209,17 @@ Invoke-WebRequest -Uri http://localhost:8000/predict -Method POST `
 
 A Prefect flow scheduled daily at 06:00 that fetches yesterday's hourly solar radiation from the Open Meteo API, runs inference using the latest registered model, and stores predictions alongside Elia actuals in the `monitoring_db` database. Predictions are stored in MW (model output in kWh divided by 1000) to match Elia actuals.
 
+The flow can also be triggered manually from the Prefect UI at http://localhost:4200. At least one successful run is required before the Grafana dashboard can display any data.
+
 ### Monitoring
 
-A Prefect flow scheduled daily at 02:00 that loads the last 720 hours of predictions with actuals, runs an Evidently regression report (RMSE, MAE, mean error), and stores the results to the `monitoring_metrics` table. If RMSE exceeds the configured threshold (`RMSE_THRESHOLD_MW`, default 2000 MW), it automatically triggers the `solar-forecast-training` retraining deployment via the Prefect API.
+A Prefect flow scheduled daily at 02:00 that loads the last 720 hours of predictions with actuals, runs an Evidently regression report (RMSE, MAE, mean error), and stores the results to the `monitoring_metrics` table. If RMSE exceeds the configured threshold, it automatically triggers the `solar-forecast-training` retraining deployment via the Prefect API. The threshold is controlled by the `RMSE_THRESHOLD_MW` variable in `.env` (default: 2000 MW).
 
-The Grafana dashboard at http://localhost:3000 is provisioned automatically on startup and shows predictions vs actuals, prediction error over time, and RMSE/MAE trends.
+The flow can also be triggered manually from the Prefect UI at http://localhost:4200. At least one successful run is required before the RMSE/MAE panels in Grafana have data to display.
+
+### Grafana
+
+The Grafana dashboard at http://localhost:3000 shows predictions vs actuals, prediction error over time, and RMSE/MAE trends. The dashboard was created in Grafana and exported to JSON, which is mounted into the container at startup via the provisioning configuration in `monitoring/grafana/provisioning/`. This means the dashboard is always available without any manual import steps.
 
 ## Dependencies
 
