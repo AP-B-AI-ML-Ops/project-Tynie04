@@ -31,10 +31,34 @@ Source code for the training pipeline lives in `src/`. Each deployed service has
 
 ## Data
 
-The dataset comes from the Data Engineering course and combines:
+The raw data files are **not included in this repository** and must be placed manually before training.
 
-- `sun_combined.csv`: daily solar radiation (W/m²) from Open Meteo ECMWF, KMI, and Kaggle sources
-- `productie_combined.csv`: hourly solar and wind production (kWh) from Energie Vlaanderen and Elia
+### Required files
+
+Place the following files in `data/raw/`:
+
+| File | Description | Expected columns |
+|---|---|---|
+| `sun_combined.csv` | Daily solar radiation from Open Meteo ECMWF, KMI, and Kaggle sources | `id`, `datum`, `open_meteo_radiation`, `kmi_radiation_avg`, `kaggle_radiation_avg` |
+| `productie_comnbined.csv` | Hourly solar and wind production (kWh) from Energie Vlaanderen and Elia | `tijd`, `vlaanderen zon kwh`, `vlaanderen wind kwh`, `elia zon kwh`, `elia wind kwh` |
+
+The directory structure must be:
+
+```
+data/
+└── raw/
+    ├── sun_combined.csv
+    └── productie_comnbined.csv
+```
+
+The `data/processed/` directory is created automatically by the training pipeline.
+
+> These files originate from the Data Engineering course. If you do not have access to them, contact your instructor.
+
+### What the training pipeline uses
+
+- `sun_combined.csv`: the `datum` and `open_meteo_radiation` columns are used as the radiation feature.
+- `productie_comnbined.csv`: the `tijd` and `elia zon kwh` columns are used as the production target.
 
 Two datasets are built from this:
 
