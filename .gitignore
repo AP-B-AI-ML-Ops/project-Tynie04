@@ -48,6 +48,11 @@ mlartifacts/
 
 # Data
 data/
+!data/
+!data/raw/
+!data/raw/.gitkeep
+!data/processed/
+!data/processed/.gitkeep
 
 # Models
 models/
